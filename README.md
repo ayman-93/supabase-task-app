@@ -66,7 +66,7 @@ This applies any local database migrations to your remote Supabase database.
 ### 3. Generate TypeScript types
 
 ```bash
-npx supabase gen types typescript --project-id "<project-id>" --schema public > src/database.types.ts
+npx supabase gen types typescript --project-id "<project-id>" --schema public > src/types/database.types.ts
 ```
 
 This generates TypeScript type definitions based on your database schema for type-safe database operations.
