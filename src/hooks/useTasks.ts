@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import supabase from "../supabase-client";
 import type { Task, TaskInsert, TaskUpdate, TaskWithUser } from "../types/task";
 import type { SortOrder, CompletionFilter } from "../types/preferences";
+import { REALTIME_LISTEN_TYPES, REALTIME_POSTGRES_CHANGES_LISTEN_EVENT, type RealtimePostgresDeletePayload, type RealtimePostgresInsertPayload, type RealtimePostgresUpdatePayload } from "@supabase/supabase-js";
 
 interface UseTasksOptions {
   userId?: string;
@@ -122,10 +123,10 @@ export function useTasks({
     }
   }, [searchTerm, sortOrder, completionFilter, page, pageSize]);
 
-  const addTask = useCallback(async (newTask: TaskInsert) => {
+  const addTask = useCallback(async (newTask: Omit<TaskInsert, 'createdBy'>) => {
     try {
       setError(null);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("tasks")
         .insert({...newTask, createdBy: userId!})
         .select()
@@ -247,7 +248,7 @@ export function useTasks({
   }, [fetchTasks]);
 
   // Handle realtime INSERT events
-  const handleRealtimeInsert = useCallback(async (payload: { new: Task }) => {
+  const handleRealtimeInsert = useCallback(async (payload: RealtimePostgresInsertPayload<Task>) => {
     // Fetch the task with user info from the view
     const { data: taskWithUser } = await supabase
       .from("tasks_with_user")
@@ -296,7 +297,7 @@ export function useTasks({
   }, [completionFilter, searchTerm, sortOrder, page, pageSize]);
 
   // Handle realtime UPDATE events
-  const handleRealtimeUpdate = useCallback(async (payload: { new: Task; old: Task }) => {
+  const handleRealtimeUpdate = useCallback(async (payload: RealtimePostgresUpdatePayload<Task>) => {
     const taskId = payload.new.id;
 
     // Fetch the updated task with user info from the view
@@ -346,7 +347,7 @@ export function useTasks({
   }, [completionFilter, searchTerm]);
 
   // Handle realtime DELETE events
-  const handleRealtimeDelete = useCallback((payload: { old: Task }) => {
+  const handleRealtimeDelete = useCallback((payload: RealtimePostgresDeletePayload<Task>) => {
     const deletedTaskId = payload.old.id;
 
     setTasks(prevTasks =>
@@ -362,33 +363,39 @@ export function useTasks({
   }, []);
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`tasks-channel`)
-      .on('postgres_changes',
+    const channel = supabase.channel(`tasks-channel`);
+
+      channel.on<Task>(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
-          event: 'INSERT',
+          event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT,
           schema: 'public',
           table: 'tasks'
         },
         handleRealtimeInsert
-      )
-      .on('postgres_changes',
+      );
+
+      channel.on(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
-          event: 'UPDATE',
+          event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE,
           schema: 'public',
           table: 'tasks'
         },
         handleRealtimeUpdate
-      )
-      .on('postgres_changes',
+      );
+
+      channel.on(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
-          event: 'DELETE',
+          event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.DELETE,
           schema: 'public',
           table: 'tasks'
         },
         handleRealtimeDelete
-      )
-      .subscribe();
+      );
+
+      channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);

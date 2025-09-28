@@ -204,7 +204,7 @@ export function TaskItem({ task, onEdit, onDelete, onToggle }: TaskItemProps) {
                   clipRule="evenodd"
                 />
               </svg>
-              {formatDate(task.created_at)}
+              {task.created_at ? formatDate(task.created_at) : "Unknown date"}
             </span>
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

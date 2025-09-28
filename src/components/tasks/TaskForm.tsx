@@ -7,11 +7,11 @@ import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 
 interface TaskFormProps {
-  readonly onSubmit: (task: TaskInsert) => Promise<void>;
+  readonly onSubmit: (task: Omit<TaskInsert, 'createdBy'>) => Promise<void>;
 }
 
 export function TaskForm({ onSubmit }: TaskFormProps) {
-  const [task, setTask] = useState<TaskInsert>({
+  const [task, setTask] = useState<Omit<TaskInsert, 'createdBy'>>({
     title: "",
     description: "",
     isCompleted: false,
